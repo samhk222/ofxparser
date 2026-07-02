@@ -50,7 +50,15 @@ class Parser
     public function loadFromString($ofxContent)
     {
         $ofxContent = str_replace(["\r\n", "\r"], "\n", $ofxContent);
-        $ofxContent = utf8_encode($ofxContent);
+
+        // Normalize to UTF-8. OFX files come in different encodings: some banks
+        // (e.g. Bradesco/Sicredi) export as Windows-1252/ISO-8859-1, while others
+        // (e.g. Nubank) already export as UTF-8. Only convert when the content is
+        // not valid UTF-8, otherwise an already-UTF-8 file would be double-encoded
+        // (turning "é" into "Ã©"). Also avoids the deprecated utf8_encode().
+        if (!mb_check_encoding($ofxContent, 'UTF-8')) {
+            $ofxContent = mb_convert_encoding($ofxContent, 'UTF-8', 'Windows-1252');
+        }
 
         $sgmlStart = stripos($ofxContent, '<OFX>');
         $ofxHeader =  trim(substr($ofxContent, 0, $sgmlStart));
